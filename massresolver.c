@@ -164,8 +164,9 @@ mycallback(void *mydata, int err, struct ub_result *result)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
+    int opt = 0;
     int retval;
 
     ctx = ub_ctx_create();
@@ -173,14 +174,33 @@ main(void)
         fprintf(stderr, "error: could not create unbound context\n");
         return 1;
     }
-    ub_ctx_async(ctx, 1);
-#ifdef USE_RESOLVCONF
-    ub_ctx_resolvconf(ctx, NULL);
-#elif defined(USE_LOCALHOST)
-    ub_ctx_set_fwd(ctx, "127.0.0.1");
-#else
-    ub_ctx_set_option(ctx, "root-hints:", "/var/unbound/etc/named.cache");
-#endif
+
+    while ((opt = getopt(argc, argv, "s:lr")) != -1) {
+        switch(opt) {
+            case 's':
+                ub_ctx_set_fwd(ctx, optarg);
+                break;
+            case 'l':
+                ub_ctx_set_fwd(ctx, "127.0.0.1");
+                break;
+            case 'r':
+                ub_ctx_resolvconf(ctx, NULL);
+                break;
+            case '?':
+            /* Case when user enters the command as
+             * $ ./cmd_exe -i
+             */
+                if (optopt == 's') {
+                  printf("\nMissing mandatory server option");
+                 exit;
+                }
+                break;
+            default:
+                ub_ctx_set_option(ctx, "root-hints:", "/var/unbound/etc/named.cache");
+                break;
+        }
+    }
+
     ub_ctx_set_option(ctx, "num-threads:", "8");
     ub_ctx_set_option(ctx, "outgoing-range:", "8192");
     ub_ctx_set_option(ctx, "outgoing-num-tcp:", "100");
